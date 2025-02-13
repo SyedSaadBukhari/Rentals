@@ -31,7 +31,9 @@ const Navbar = () => {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+
         <IconButton
+          data-testid="search-button"
           disabled={search === ""}
           onClick={() => {
             navigate(`/properties/search/${search}`);
@@ -53,6 +55,7 @@ const Navbar = () => {
         )}
 
         <button
+          data-testid="account-menu-button"
           className="navbar_right_account"
           onClick={() => setDropdownMenu(!dropdownMenu)}
         >

@@ -125,6 +125,7 @@ const ListingDetails = () => {
               "public",
               ""
             )}`}
+            alt="host profile"
           />
           <h3>
             Hosted by {listing.creator.firstName} {listing.creator.lastName}

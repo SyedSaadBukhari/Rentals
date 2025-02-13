@@ -9,9 +9,7 @@ import { setListings } from "../redux/state";
 const Listings = () => {
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(true);
-
   const [selectedCategory, setSelectedCategory] = useState("All");
-
   const listings = useSelector((state) => state.listings);
 
   const getFeedListings = async () => {
@@ -39,23 +37,30 @@ const Listings = () => {
 
   return (
     <>
-      <div className="category-list">
+      <div className="category-list" data-testid="category-list">
         {categories?.map((category, index) => (
           <div
-            className={`category ${category.label === selectedCategory ? "selected" : ""}`}
+            className={`category ${
+              category.label === selectedCategory ? "selected" : ""
+            }`}
             key={index}
             onClick={() => setSelectedCategory(category.label)}
+            data-testid={`category-${category.label}`}
           >
             <div className="category_icon">{category.icon}</div>
-            <p>{category.label}</p>
+            <p data-testid={`category-label-${category.label}`}>
+              {category.label}
+            </p>
           </div>
         ))}
       </div>
 
       {loading ? (
-        <Loader />
+        <div data-testid="loader">
+          <Loader />
+        </div>
       ) : (
-        <div className="listings">
+        <div className="listings" data-testid="listings-container">
           {listings.map(
             ({
               _id,
@@ -67,20 +72,22 @@ const Listings = () => {
               category,
               type,
               price,
-              booking=false
+              booking = false,
             }) => (
-              <ListingCard
-                listingId={_id}
-                creator={creator}
-                listingPhotoPaths={listingPhotoPaths}
-                city={city}
-                province={province}
-                country={country}
-                category={category}
-                type={type}
-                price={price}
-                booking={booking}
-              />
+              <div key={_id} data-testid={`listing-card-${_id}`}>
+                <ListingCard
+                  listingId={_id}
+                  creator={creator}
+                  listingPhotoPaths={listingPhotoPaths}
+                  city={city}
+                  province={province}
+                  country={country}
+                  category={category}
+                  type={type}
+                  price={price}
+                  booking={booking}
+                />
+              </div>
             )
           )}
         </div>

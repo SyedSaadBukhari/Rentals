@@ -51,7 +51,7 @@ const ListingCard = ({
         `http://localhost:3001/users/${user?._id}/${listingId}`,
         {
           method: "PATCH",
-          header: {
+          headers: {
             "Content-Type": "application/json",
           },
         }
@@ -65,6 +65,7 @@ const ListingCard = ({
 
   return (
     <div
+      data-testid="listing-card"
       className="listing-card"
       onClick={() => {
         navigate(`/properties/${listingId}`);
@@ -72,6 +73,7 @@ const ListingCard = ({
     >
       <div className="slider-container">
         <div
+          data-testid="slider"
           className="slider"
           style={{ transform: `translateX(-${currentIndex * 100}%)` }}
         >
@@ -82,6 +84,7 @@ const ListingCard = ({
                 alt={`photo ${index + 1}`}
               />
               <div
+                data-testid="prev-slide-button"
                 className="prev-button"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -91,6 +94,7 @@ const ListingCard = ({
                 <ArrowBackIosNew sx={{ fontSize: "15px" }} />
               </div>
               <div
+                data-testid="next-slide-button"
                 className="next-button"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -128,6 +132,7 @@ const ListingCard = ({
       )}
 
       <button
+        data-testid="wishlist-button"
         className="favorite"
         onClick={(e) => {
           e.stopPropagation();

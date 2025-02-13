@@ -246,6 +246,7 @@ const CreateListing = () => {
                 <p>Guests</p>
                 <div className="basic_count">
                   <RemoveCircleOutline
+                    data-testid="RemoveCircleOutline"
                     onClick={() => {
                       guestCount > 1 && setGuestCount(guestCount - 1);
                     }}
@@ -257,6 +258,7 @@ const CreateListing = () => {
                   />
                   <p>{guestCount}</p>
                   <AddCircleOutline
+                    data-testid="AddCircleOutline"
                     onClick={() => {
                       setGuestCount(guestCount + 1);
                     }}
@@ -273,6 +275,7 @@ const CreateListing = () => {
                 <p>Bedrooms</p>
                 <div className="basic_count">
                   <RemoveCircleOutline
+                    data-testid="RemoveCircleOutline"
                     onClick={() => {
                       bedroomCount > 1 && setBedroomCount(bedroomCount - 1);
                     }}
@@ -284,6 +287,7 @@ const CreateListing = () => {
                   />
                   <p>{bedroomCount}</p>
                   <AddCircleOutline
+                    data-testid="AddCircleOutline"
                     onClick={() => {
                       setBedroomCount(bedroomCount + 1);
                     }}
@@ -300,6 +304,7 @@ const CreateListing = () => {
                 <p>Beds</p>
                 <div className="basic_count">
                   <RemoveCircleOutline
+                    data-testid="RemoveCircleOutline"
                     onClick={() => {
                       bedCount > 1 && setBedCount(bedCount - 1);
                     }}
@@ -311,6 +316,7 @@ const CreateListing = () => {
                   />
                   <p>{bedCount}</p>
                   <AddCircleOutline
+                    data-testid="AddCircleOutline"
                     onClick={() => {
                       setBedCount(bedCount + 1);
                     }}
@@ -327,6 +333,7 @@ const CreateListing = () => {
                 <p>Bathrooms</p>
                 <div className="basic_count">
                   <RemoveCircleOutline
+                    data-testid="RemoveCircleOutline"
                     onClick={() => {
                       bathroomCount > 1 && setBathroomCount(bathroomCount - 1);
                     }}
@@ -338,6 +345,7 @@ const CreateListing = () => {
                   />
                   <p>{bathroomCount}</p>
                   <AddCircleOutline
+                    data-testid="AddCircleOutline"
                     onClick={() => {
                       setBathroomCount(bathroomCount + 1);
                     }}

@@ -1,86 +1,177 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import React from "react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
-import { BrowserRouter } from "react-router-dom";
-import { configureStore } from "@reduxjs/toolkit";
-import ListingCard from "../components/ListingCard";
-import { setWishList } from "../redux/state";
+import { createStore } from "redux";
+import { MemoryRouter } from "react-router-dom";
+import ListingCard from "./ListingCard";
 
-const createMockStore = (initialState) => {
-  return configureStore({
-    reducer: {
-      user: (state = initialState.user) => state,
-    },
-    preloadedState: initialState,
-  });
+const mockNavigate = jest.fn();
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => mockNavigate,
+}));
+
+global.fetch = jest.fn(() =>
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({ wishList: ["123"] }),
+    headers: new Headers({
+      "Content-Type": "application/json",
+    }),
+  })
+);
+
+const initialState = {
+  user: null,
 };
 
+const rootReducer = (state = initialState, action) => {
+  switch (action.type) {
+    case "SET_USER":
+      return { ...state, user: action.payload };
+    case "state/setWishList":
+      return {
+        ...state,
+        user: {
+          ...state.user,
+          wishList: action.payload,
+        },
+      };
+    default:
+      return state;
+  }
+};
+
+const store = createStore(rootReducer);
+
 describe("ListingCard Component", () => {
-  let store;
-  let mockDispatch;
-
-  beforeEach(() => {
-    store = createMockStore({
-      user: {
-        _id: "user123",
-        wishList: [{ _id: "listing123" }],
-      },
-    });
-    store.dispatch = jest.fn();
-  });
-
-  const defaultProps = {
-    listingId: "listing123",
-    creator: { _id: "creator456" },
-    listingPhotoPaths: ["photo1.jpg", "photo2.jpg"],
+  const mockProps = {
+    listingId: "123",
+    creator: { _id: "creator123" },
+    listingPhotoPaths: [
+      "public/photo1.jpg",
+      "public/photo2.jpg",
+      "public/photo3.jpg",
+    ],
     city: "New York",
     province: "NY",
     country: "USA",
     category: "Apartment",
-    type: "Rental",
-    price: 200,
-    startDate: "2024-06-01",
-    endDate: "2024-06-05",
-    totalPrice: 800,
+    type: "Entire Place",
+    price: 100,
+    startDate: "2025-03-01",
+    endDate: "2025-03-05",
+    totalPrice: 500,
     booking: false,
   };
 
-  const renderComponent = (props = {}) =>
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+  test("User can navigate through listing photos using arrow buttons", () => {
     render(
       <Provider store={store}>
-        <BrowserRouter>
-          <ListingCard {...defaultProps} {...props} />
-        </BrowserRouter>
+        <MemoryRouter>
+          <ListingCard {...mockProps} />
+        </MemoryRouter>
       </Provider>
     );
 
-  test("renders listing details correctly", () => {
-    renderComponent();
-    expect(screen.getByText(/New York, NY, USA/i)).toBeInTheDocument();
-    expect(screen.getByText(/Apartment/i)).toBeInTheDocument();
-    expect(screen.getByText(/Rental/i)).toBeInTheDocument();
-    expect(screen.getByText(/\$200 per night/i)).toBeInTheDocument();
-  });
+    const nextButton = screen.getAllByTestId("next-slide-button")[0];
+    const prevButton = screen.getAllByTestId("prev-slide-button")[0];
+    const slider = screen.getByTestId("slider");
 
-  test("navigates to property details page when clicked", () => {
-    renderComponent();
-    const card = screen.getByRole("button", { hidden: true });
-    fireEvent.click(card);
-    expect(global.window.location.pathname).toContain("/properties/listing123");
-  });
+    // handle -0% case
+    const getNormalizedTransform = (transform) =>
+      transform.replace(/-0%/g, "0%");
 
-  test("wishlist button toggles correctly", () => {
-    renderComponent();
-    const wishlistButton = screen.getByRole("button", { name: /favorite/i });
-    fireEvent.click(wishlistButton);
-    expect(store.dispatch).toHaveBeenCalledWith(expect.any(Function));
-  });
+    expect(getNormalizedTransform(slider.style.transform)).toBe(
+      "translateX(0%)"
+    );
 
-  test("slider navigation works", () => {
-    renderComponent();
-    const nextButton = screen.getByRole("button", {
-      name: /arrow_forward_ios/i,
-    });
+    // Click next button
     fireEvent.click(nextButton);
-    w;
+    expect(getNormalizedTransform(slider.style.transform)).toBe(
+      "translateX(-100%)"
+    );
+
+    // Click prev button
+    fireEvent.click(prevButton);
+    expect(getNormalizedTransform(slider.style.transform)).toBe(
+      "translateX(0%)"
+    );
+  });
+
+  test("Clicking listing card navigates to listing detail page", () => {
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <ListingCard {...mockProps} />
+        </MemoryRouter>
+      </Provider>
+    );
+
+    const card = screen.getByTestId("listing-card");
+    fireEvent.click(card);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/properties/123");
+  });
+
+  test("Displays booking information when booking prop is true", () => {
+    const bookingProps = {
+      ...mockProps,
+      booking: true,
+    };
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <ListingCard {...bookingProps} />
+        </MemoryRouter>
+      </Provider>
+    );
+
+    expect(screen.getByText("2025-03-01 - 2025-03-05")).toBeInTheDocument();
+    expect(
+      screen.getByText((content, element) => {
+        return element.textContent === "$500 total";
+      })
+    ).toBeInTheDocument();
+  });
+
+  test("Displays regular listing information when booking prop is false", () => {
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <ListingCard {...mockProps} />
+        </MemoryRouter>
+      </Provider>
+    );
+
+    expect(screen.getByText("Entire Place")).toBeInTheDocument();
+    expect(
+      screen.getByText((content, element) => {
+        return element.textContent === "$100 per night";
+      })
+    ).toBeInTheDocument();
+  });
+
+  test("Wishlist button is disabled when user is not logged in", () => {
+    // Ensure no user is logged in
+    store.dispatch({
+      type: "SET_USER",
+      payload: null,
+    });
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <ListingCard {...mockProps} />
+        </MemoryRouter>
+      </Provider>
+    );
+
+    const wishlistButton = screen.getByTestId("wishlist-button");
+    expect(wishlistButton).toBeDisabled();
   });
 });

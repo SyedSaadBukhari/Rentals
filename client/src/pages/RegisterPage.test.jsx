@@ -1,97 +1,185 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { Provider } from "react-redux";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
-import { configureStore } from "@reduxjs/toolkit";
-
-import { setWishList } from "../redux/state";
-
 import RegisterPage from "./RegisterPage";
-import { setLogin } from "../redux/state";
+import userEvent from "@testing-library/user-event";
 
-const createMockStore = (initialState) => {
-  return configureStore({
-    reducer: {
-      user: (state = initialState.user) => state,
-    },
-    preloadedState: initialState,
-  });
+const mockCreateObjectURL = jest.fn();
+global.URL.createObjectURL = mockCreateObjectURL;
+
+const mockNavigate = jest.fn();
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => mockNavigate,
+}));
+
+const renderRegisterPage = () => {
+  return render(
+    <BrowserRouter>
+      <RegisterPage />
+    </BrowserRouter>
+  );
 };
 
 describe("RegisterPage Component", () => {
-  let store;
-
   beforeEach(() => {
-    store = createMockStore({ user: null });
-    store.dispatch = jest.fn();
+    jest.clearAllMocks();
+    mockCreateObjectURL.mockReturnValue("mock-url");
   });
 
-  const renderComponent = () =>
-    render(
-      <Provider store={store}>
-        <BrowserRouter>
-          <RegisterPage />
-        </BrowserRouter>
-      </Provider>
-    );
+  // Positive Test Cases
+  describe("Positive Tests", () => {
+    test("successfully registers with valid form data", async () => {
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          ok: true,
+        })
+      );
 
-  test("renders register form correctly", () => {
-    renderComponent();
-    expect(screen.getByPlaceholderText("First Name")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Last Name")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Email")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Password")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Confirm Password")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /register/i })
-    ).toBeInTheDocument();
-  });
+      renderRegisterPage();
 
-  test("allows input changes", () => {
-    renderComponent();
-    const firstNameInput = screen.getByPlaceholderText("First Name");
-    const lastNameInput = screen.getByPlaceholderText("Last Name");
-    const emailInput = screen.getByPlaceholderText("Email");
-    const passwordInput = screen.getByPlaceholderText("Password");
-    const confirmPasswordInput =
-      screen.getByPlaceholderText("Confirm Password");
+      await userEvent.type(screen.getByPlaceholderText(/First Name/i), "John");
+      await userEvent.type(screen.getByPlaceholderText(/Last Name/i), "Doe");
+      await userEvent.type(
+        screen.getByPlaceholderText(/Email/i),
+        "john@example.com"
+      );
+      await userEvent.type(
+        screen.getByPlaceholderText(/^Password/i),
+        "password123"
+      );
+      await userEvent.type(
+        screen.getByPlaceholderText(/Confirm Password/i),
+        "password123"
+      );
 
-    fireEvent.change(firstNameInput, { target: { value: "John" } });
-    fireEvent.change(lastNameInput, { target: { value: "Doe" } });
-    fireEvent.change(emailInput, { target: { value: "john@example.com" } });
-    fireEvent.change(passwordInput, { target: { value: "password123" } });
-    fireEvent.change(confirmPasswordInput, {
-      target: { value: "password123" },
+      const file = new File(["dummy content"], "profile.png", {
+        type: "image/png",
+      });
+      const fileInput = screen.getByLabelText(/Upload Your Photo/i);
+      await userEvent.upload(fileInput, file);
+
+      const registerButton = screen.getByRole("button", { name: /REGISTER/i });
+      fireEvent.click(registerButton);
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith("/login");
+      });
     });
 
-    expect(firstNameInput.value).toBe("John");
-    expect(lastNameInput.value).toBe("Doe");
-    expect(emailInput.value).toBe("john@example.com");
-    expect(passwordInput.value).toBe("password123");
-    expect(confirmPasswordInput.value).toBe("password123");
-  });
+    test("displays uploaded profile image preview", async () => {
+      renderRegisterPage();
 
-  test("displays password mismatch error", () => {
-    renderComponent();
-    const passwordInput = screen.getByPlaceholderText("Password");
-    const confirmPasswordInput =
-      screen.getByPlaceholderText("Confirm Password");
-    fireEvent.change(passwordInput, { target: { value: "password123" } });
-    fireEvent.change(confirmPasswordInput, {
-      target: { value: "wrongpassword" },
+      const file = new File(["dummy content"], "profile.png", {
+        type: "image/png",
+      });
+      const fileInput = screen.getByLabelText(/Upload Your Photo/i);
+
+      await userEvent.upload(fileInput, file);
+
+      await waitFor(() => {
+        const previewImage = screen
+          .getAllByRole("img")
+          .find((img) =>
+            img.getAttribute("style")?.includes("max-width: 80px")
+          );
+        expect(previewImage).toBeInTheDocument();
+        expect(previewImage).toHaveAttribute("src", "mock-url");
+      });
+
+      expect(mockCreateObjectURL).toHaveBeenCalledWith(file);
     });
-    expect(screen.getByText("Passwords are not matched!")).toBeInTheDocument();
+
+    test("allows matching passwords", async () => {
+      renderRegisterPage();
+
+      await userEvent.type(
+        screen.getByPlaceholderText(/^Password/i),
+        "password123"
+      );
+      await userEvent.type(
+        screen.getByPlaceholderText(/Confirm Password/i),
+        "password123"
+      );
+
+      expect(
+        screen.queryByText(/Passwords are not matched!/i)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /REGISTER/i })
+      ).not.toBeDisabled();
+    });
   });
 
-  test("calls register function on submit", async () => {
-    global.fetch = jest.fn(() => Promise.resolve({ ok: true }));
+  // Negative Test Cases
+  describe("Negative Tests", () => {
+    test("displays error for mismatched passwords", async () => {
+      renderRegisterPage();
 
-    renderComponent();
-    const registerButton = screen.getByRole("button", { name: /register/i });
-    fireEvent.click(registerButton);
+      await userEvent.type(
+        screen.getByPlaceholderText(/^Password/i),
+        "password123"
+      );
+      await userEvent.type(
+        screen.getByPlaceholderText(/Confirm Password/i),
+        "password456"
+      );
 
-    expect(global.fetch).toHaveBeenCalledWith(
-      "http://localhost:3001/auth/register",
-      expect.any(Object)
-    );
+      expect(
+        screen.getByText(/Passwords are not matched!/i)
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /REGISTER/i })).toBeDisabled();
+    });
+
+    test("prevents registration with missing required fields", async () => {
+      renderRegisterPage();
+
+      const registerButton = screen.getByRole("button", { name: /REGISTER/i });
+      fireEvent.click(registerButton);
+
+      expect(screen.getByPlaceholderText(/First Name/i)).toBeInvalid();
+      expect(screen.getByPlaceholderText(/Last Name/i)).toBeInvalid();
+      expect(screen.getByPlaceholderText(/Email/i)).toBeInvalid();
+      expect(screen.getByPlaceholderText(/^Password/i)).toBeInvalid();
+      expect(screen.getByPlaceholderText(/Confirm Password/i)).toBeInvalid();
+    });
+
+    test("handles registration failure", async () => {
+      const mockError = new Error("Registration failed");
+      global.fetch = jest.fn(() => Promise.reject(mockError));
+
+      const consoleSpy = jest.spyOn(console, "log");
+      renderRegisterPage();
+
+      await userEvent.type(screen.getByPlaceholderText(/First Name/i), "John");
+      await userEvent.type(screen.getByPlaceholderText(/Last Name/i), "Doe");
+      await userEvent.type(
+        screen.getByPlaceholderText(/Email/i),
+        "john@example.com"
+      );
+      await userEvent.type(
+        screen.getByPlaceholderText(/^Password/i),
+        "password123"
+      );
+      await userEvent.type(
+        screen.getByPlaceholderText(/Confirm Password/i),
+        "password123"
+      );
+
+      const file = new File(["dummy content"], "profile.png", {
+        type: "image/png",
+      });
+      const fileInput = screen.getByLabelText(/Upload Your Photo/i);
+      await userEvent.upload(fileInput, file);
+
+      const registerButton = screen.getByRole("button", { name: /REGISTER/i });
+      fireEvent.click(registerButton);
+
+      await waitFor(() => {
+        expect(consoleSpy).toHaveBeenCalledWith(
+          "Registration failed",
+          mockError.message
+        );
+      });
+    });
   });
 });
